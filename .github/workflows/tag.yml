@@ -1,0 +1,28 @@
+name: Update Git Tag
+
+on:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Update tag
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { GITHUB_REPOSITORY, GITHUB_SHA } = process.env;
+            const ref = "tags/latest";
+            await github.rest.git.updateRef({
+              owner: GITHUB_REPOSITORY.split('/')[0],
+              repo: GITHUB_REPOSITORY.split('/')[1],
+              ref,
+              sha: GITHUB_SHA,
+              force: true,
+            });

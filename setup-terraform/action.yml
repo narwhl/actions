@@ -1,0 +1,72 @@
+name: "Setup Terraform"
+description: "Sets up Terraform CLI in your GitHub Actions workflow."
+author: "narwhl"
+
+inputs:
+  endpoint:
+    description: "Terraform HTTP backend to store the state"
+    required: true
+    default: "https://terraform.narwhl.workers.dev"
+  enable_caching:
+    description: "Enable caching provider binaries"
+    default: "false"
+    required: false
+  state:
+    description: "State file path/name on bucket"
+    required: true
+  use_federated_token:
+    description: "Whether to use federated token issued by a trusted secure token service"
+    required: false
+    default: ''
+  terraform_version:
+    description: 'The version of Terraform CLI to install. Instead of full version string you can also specify constraint string starting with "<" (for example `<1.13.0`) to install the latest version satisfying the constraint. A value of `latest` will install the latest version of Terraform CLI. Defaults to `latest`.'
+    default: "latest"
+    required: false
+  terraform_wrapper:
+    description: "Whether or not to install a wrapper to wrap subsequent calls of the `terraform` binary and expose its STDOUT, STDERR, and exit code as outputs named `stdout`, `stderr`, and `exitcode` respectively. Defaults to `true`."
+    default: "true"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Terraform backend and credentials
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const token = '${{ inputs.use_federated_token }}'.length > 0 ? process.env.FEDERATED_TOKEN:await core.getIDToken();
+          const url = "${{ inputs.endpoint }}/states/${{ inputs.state }}";
+          for (const [key, value] of Object.entries({
+            TF_HTTP_ADDRESS: url,
+            TF_HTTP_LOCK_ADDRESS: url,
+            TF_HTTP_UNLOCK_ADDRESS: url,
+            TF_HTTP_USERNAME: "${{ github.repository_owner }}",
+            TF_HTTP_PASSWORD: token,
+          })) {
+            core.setSecret(value);
+            core.exportVariable(key, value);
+          }
+          console.log(`${new Date().toISOString()} \x1b[1m\x1b[32m✅ Terraform backend credentials configured\x1b[0m`)
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+        terraform_wrapper: ${{ inputs.terraform_wrapper }}
+    - name: Configure Terraform plugin cache
+      if: inputs.enable_caching == 'true'
+      shell: bash
+      run: |
+        echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >>"$GITHUB_ENV"
+        mkdir --parents "$HOME/.terraform.d/plugin-cache"
+    - name: Cache Terraform
+      uses: actions/cache@v4
+      if: inputs.enable_caching == 'true'
+      with:
+        path: |
+          ~/.terraform.d/plugin-cache
+        key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+        restore-keys: |
+          terraform-${{ runner.os }}-
+
+branding:
+  icon: "terminal"
+  color: "purple"
