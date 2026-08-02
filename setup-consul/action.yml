@@ -1,0 +1,14 @@
+name: 'narwhl - Setup Consul'
+description: 'Sets up Consul CLI in your GitHub Actions workflow.'
+author: 'narwhl'
+inputs:
+  consul_version:
+    description: 'The version of Consul CLI to install. Instead of full version string you can also specify constraint string starting with "<" (for example `<1.19.0`) to install the latest version satisfying the constraint. A value of `latest` will install the latest version of Consul CLI. Defaults to `latest`.'
+    default: 'latest'
+    required: false
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
+branding:
+  icon: 'globe'
+  color: 'purple'
