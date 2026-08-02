@@ -8,7 +8,7 @@ This GitHub Action is a wrapper for [`hashicorp/setup-terraform`](https://github
 steps:
 - uses: narwhl/actions/setup-terraform@latest
   with:
-    terraform_version: "1.x.x"
+    terraform_version: "1.13.0"
 
 ```
 
