@@ -33,6 +33,7 @@ steps:
   id: consul
   with:
     url: https://consul.example.com
+    namespace: payments
     method: jwt
     authMethod: github-actions
     jwt: ${{ steps.github-oidc.outputs.token }}
@@ -47,6 +48,8 @@ Supported authentication strategies:
 - `jwt`: provide `authMethod` and `jwt`; the caller-supplied JWT is exchanged through `/v1/acl/login`.
 
 The action does not mint GitHub OIDC tokens. A GitHub-issued token can be supplied through the `jwt` input. Consul's browser-interactive `oidc` auth method is not supported. ACL tokens created by `jwt` authentication are destroyed by the action's post step.
+
+Set the optional `namespace` input for Consul Enterprise. The action sends it as `X-Consul-Namespace` during ACL login, KV retrieval, and token cleanup. When `exportToken` is enabled, the same value is also exported as `CONSUL_NAMESPACE`.
 
 ### [setup-terraform](setup-terraform)
 

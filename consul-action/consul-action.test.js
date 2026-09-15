@@ -71,6 +71,7 @@ test('token authentication retrieves mapped and default KV values', async () => 
   await withServer(async (request, response) => {
     requests.push({
       method: request.method,
+      namespace: request.headers['x-consul-namespace'],
       token: request.headers['x-consul-token'],
       url: request.url
     });
@@ -87,6 +88,7 @@ test('token authentication retrieves mapped and default KV values', async () => 
   }, async url => {
     const core = createCore({
       url: `${url}/consul`,
+      namespace: 'payments',
       token: 'static-token',
       secrets: 'apps/api/password | DB_PASSWORD; apps/api/npm-token; missing | OPTIONAL',
       exportEnv: 'true',
@@ -97,9 +99,9 @@ test('token authentication retrieves mapped and default KV values', async () => 
     await run(core);
 
     assert.deepEqual(requests, [
-      { method: 'GET', token: 'static-token', url: '/consul/v1/kv/apps/api/password?raw=true' },
-      { method: 'GET', token: 'static-token', url: '/consul/v1/kv/apps/api/npm-token?raw=true' },
-      { method: 'GET', token: 'static-token', url: '/consul/v1/kv/missing?raw=true' }
+      { method: 'GET', namespace: 'payments', token: 'static-token', url: '/consul/v1/kv/apps/api/password?raw=true' },
+      { method: 'GET', namespace: 'payments', token: 'static-token', url: '/consul/v1/kv/apps/api/npm-token?raw=true' },
+      { method: 'GET', namespace: 'payments', token: 'static-token', url: '/consul/v1/kv/missing?raw=true' }
     ]);
     assert.equal(core.calls.outputs.get('DB_PASSWORD'), 'first-line\nsecond-line');
     assert.equal(core.calls.outputs.get('npmtoken'), 'npm-secret');
@@ -108,6 +110,7 @@ test('token authentication retrieves mapped and default KV values', async () => 
     assert.equal(core.calls.exports.get('NPMTOKEN'), 'npm-secret');
     assert.equal(core.calls.exports.get('CONSUL_HTTP_ADDR'), `${url}/consul`);
     assert.equal(core.calls.exports.get('CONSUL_HTTP_TOKEN'), 'static-token');
+    assert.equal(core.calls.exports.get('CONSUL_NAMESPACE'), 'payments');
     assert.deepEqual(core.calls.warnings, ['Consul KV key "missing" was not found.']);
     assert.deepEqual(core.calls.secrets, ['static-token', 'first-line', 'second-line', 'npm-secret']);
     assert.equal(core.calls.states.size, 0);
@@ -121,6 +124,7 @@ test('jwt authentication exchanges the supplied JWT and logs out', async () => {
     requests.push({
       body: await readRequestBody(request),
       method: request.method,
+      namespace: request.headers['x-consul-namespace'],
       token: request.headers['x-consul-token'],
       url: request.url
     });
@@ -137,6 +141,7 @@ test('jwt authentication exchanges the supplied JWT and logs out', async () => {
   }, async url => {
     const core = createCore({
       url,
+      namespace: 'engineering',
       method: 'jwt',
       authMethod: 'ci-jwt',
       jwt: 'supplied-jwt'
@@ -150,9 +155,11 @@ test('jwt authentication exchanges the supplied JWT and logs out', async () => {
       BearerToken: 'supplied-jwt'
     });
     assert.equal(requests[0].token, undefined);
+    assert.equal(requests[0].namespace, 'engineering');
     assert.deepEqual(requests[1], {
       body: '',
       method: 'POST',
+      namespace: 'engineering',
       token: 'jwt-consul-token',
       url: '/v1/acl/logout'
     });

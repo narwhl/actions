@@ -5,6 +5,9 @@ inputs:
   url:
     description: 'The URL of the Consul HTTP API endpoint.'
     required: true
+  namespace:
+    description: 'The Consul Enterprise namespace used for authentication, KV retrieval, and token cleanup.'
+    required: false
   method:
     description: 'Authentication strategy: token or jwt.'
     default: 'token'

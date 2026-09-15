@@ -106,7 +106,7 @@ function buildApiUrl (baseUrl, apiPath, query = {}) {
   return url;
 }
 
-function requestApi (baseUrl, method, apiPath, { body, token, query } = {}) {
+function requestApi (baseUrl, method, apiPath, { body, namespace, token, query } = {}) {
   const url = buildApiUrl(baseUrl, apiPath, query);
   const payload = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
   const headers = { Accept: 'application/json' };
@@ -116,6 +116,7 @@ function requestApi (baseUrl, method, apiPath, { body, token, query } = {}) {
     headers['Content-Length'] = payload.length;
   }
   if (token) headers['X-Consul-Token'] = token;
+  if (namespace) headers['X-Consul-Namespace'] = namespace;
 
   const transport = url.protocol === 'https:' ? https : http;
   return new Promise((resolve, reject) => {
@@ -159,10 +160,11 @@ function assertSuccess (response, operation) {
   }
 }
 
-async function login (core, url, authMethod, bearerToken) {
+async function login (core, url, namespace, authMethod, bearerToken) {
   core.info(`Authenticating to Consul with ACL auth method "${authMethod}".`);
   core.setSecret(bearerToken);
   const response = await requestApi(url, 'POST', 'v1/acl/login', {
+    namespace,
     body: {
       AuthMethod: authMethod,
       BearerToken: bearerToken
@@ -188,7 +190,7 @@ async function login (core, url, authMethod, bearerToken) {
   return token;
 }
 
-async function authenticate (core, url) {
+async function authenticate (core, url, namespace) {
   const method = (core.getInput('method', { required: false }) || 'token').trim().toLowerCase();
   if (!AUTH_METHODS.has(method)) {
     throw new Error(`Unsupported authentication method "${method}". Supported methods: jwt, token.`);
@@ -211,7 +213,7 @@ async function authenticate (core, url) {
   if (token) throw new Error('Input "token" can only be used when method is token.');
   if (!authMethod) throw new Error('Input "authMethod" is required when method is jwt.');
   if (!jwt) throw new Error('Input "jwt" is required when method is jwt.');
-  return login(core, url, authMethod, jwt);
+  return login(core, url, namespace, authMethod, jwt);
 }
 
 function encodeKeyPath (key) {
@@ -222,8 +224,9 @@ function encodeKeyPath (key) {
     .join('/');
 }
 
-async function retrieveSecret (url, token, request, ignoreNotFound) {
+async function retrieveSecret (url, namespace, token, request, ignoreNotFound) {
   const response = await requestApi(url, 'GET', `v1/kv/${encodeKeyPath(request.key)}`, {
+    namespace,
     token,
     query: { raw: 'true' }
   });
@@ -245,11 +248,13 @@ function maskSecret (core, value) {
 
 async function run (core) {
   const url = core.getInput('url', { required: true });
+  const namespace = core.getInput('namespace', { required: false });
   const requests = parseSecretsInput(core.getInput('secrets', { required: false }));
   const exportEnvironment = getBooleanInput(core, 'exportEnv', true);
   const exportToken = getBooleanInput(core, 'exportToken', false);
   const ignoreNotFound = getBooleanInput(core, 'ignoreNotFound', false);
-  const token = await authenticate(core, url);
+  if (namespace) core.info(`Using Consul namespace "${namespace}".`);
+  const token = await authenticate(core, url, namespace);
 
   if (requests.length === 0) {
     core.info('No Consul KV values requested.');
@@ -260,11 +265,12 @@ async function run (core) {
   if (exportToken) {
     core.exportVariable('CONSUL_HTTP_ADDR', url);
     core.exportVariable('CONSUL_HTTP_TOKEN', token);
-    core.info('Exported CONSUL_HTTP_ADDR and CONSUL_HTTP_TOKEN for subsequent steps.');
+    if (namespace) core.exportVariable('CONSUL_NAMESPACE', namespace);
+    core.info(`Exported CONSUL_HTTP_ADDR and CONSUL_HTTP_TOKEN${namespace ? ', plus CONSUL_NAMESPACE' : ''} for subsequent steps.`);
   }
 
   const results = await Promise.all(
-    requests.map(request => retrieveSecret(url, token, request, ignoreNotFound))
+    requests.map(request => retrieveSecret(url, namespace, token, request, ignoreNotFound))
   );
 
   let retrievedCount = 0;
@@ -295,8 +301,9 @@ async function logout (core) {
 
   core.setSecret(token);
   const url = core.getInput('url', { required: true });
+  const namespace = core.getInput('namespace', { required: false });
   core.info('Revoking the action-created Consul ACL token.');
-  const response = await requestApi(url, 'POST', 'v1/acl/logout', { token });
+  const response = await requestApi(url, 'POST', 'v1/acl/logout', { namespace, token });
   assertSuccess(response, 'Consul logout');
   core.info('Revoked the action-created Consul ACL token.');
 }
