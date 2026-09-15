@@ -1,0 +1,42 @@
+name: 'narwhl - Consul'
+description: 'Authenticates to Consul and exposes KV values as masked outputs and environment variables.'
+author: 'narwhl'
+inputs:
+  url:
+    description: 'The URL of the Consul HTTP API endpoint.'
+    required: true
+  method:
+    description: 'Authentication strategy: token or jwt.'
+    default: 'token'
+    required: false
+  authMethod:
+    description: 'The configured Consul ACL auth method name used by jwt authentication.'
+    required: false
+  token:
+    description: 'An existing Consul ACL token used by token authentication.'
+    required: false
+  jwt:
+    description: 'A caller-supplied JWT to exchange with Consul when method is jwt.'
+    required: false
+  secrets:
+    description: 'A semicolon-separated list of Consul KV keys to retrieve. Map a key with "key | OUTPUT_NAME".'
+    required: false
+  exportEnv:
+    description: 'Whether to export retrieved values as environment variables.'
+    default: 'true'
+    required: false
+  exportToken:
+    description: 'Whether to export the authenticated token and endpoint as CONSUL_HTTP_TOKEN and CONSUL_HTTP_ADDR.'
+    default: 'false'
+    required: false
+  ignoreNotFound:
+    description: 'Whether missing KV keys should emit warnings instead of failing the action.'
+    default: 'false'
+    required: false
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
+  post: 'dist/cleanup/index.js'
+branding:
+  icon: 'key'
+  color: 'purple'

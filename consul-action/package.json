@@ -1,0 +1,27 @@
+{
+  "name": "consul-action",
+  "version": "1.0.0",
+  "description": "Authenticate to Consul and retrieve KV values in GitHub Actions",
+  "license": "MPL-2.0",
+  "publisher": "narwhl",
+  "main": "index.js",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/narwhl/actions.git"
+  },
+  "scripts": {
+    "build": "ncc build index.js --out dist && ncc build cleanup.js --out dist/cleanup",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "author": "",
+  "dependencies": {
+    "@actions/core": "^1.11.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.4"
+  }
+}
