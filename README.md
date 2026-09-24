@@ -53,7 +53,7 @@ Set the optional `namespace` input for Consul Enterprise. The action sends it as
 
 ### [setup-terraform](setup-terraform)
 
-Wraps [`hashicorp/setup-terraform`](https://github.com/hashicorp/setup-terraform) and authenticates automatically against a custom HTTP state backend (defaults to `terraform.narwhl.workers.dev`, overridable via `endpoint`), so no `cli_config_credentials_token` is required. Pass `use_federated_token: true` to authenticate with a token issued by [`imprint`](imprint), valid 1 hour instead of GitHub's ~5 minutes.
+Wraps [`hashicorp/setup-terraform`](https://github.com/hashicorp/setup-terraform) and authenticates automatically against a custom HTTP state backend (defaults to `terraform.narwhl.workers.dev`, overridable via `endpoint`), so no `cli_config_credentials_token` is required. Pass `use_federated_token: true` to authenticate with a token issued by [`imprint`](imprint), valid 15 minutes.
 
 ```yml
 steps:
@@ -65,13 +65,14 @@ steps:
 
 ### [imprint](imprint)
 
-Authenticates the runner to a Security Token Service via its OIDC ID token and exchanges it for short-lived resource credentials, exposed as environment variables for subsequent steps.
+Exchanges the runner's GitHub OIDC ID token for a workload identity federation token (RFC 8693) issued by `login.kris.engineer`. The token is returned as the `access_token` output and exported as `FEDERATED_TOKEN`; pass it to `consul-action` (`method: jwt`) to read secrets, or to `setup-terraform` via `use_federated_token`.
 
 ```yml
 steps:
 - uses: narwhl/actions/imprint@latest
+  id: imprint
   with:
-    scope: tailscale cloudflare
+    scope: terraform
 ```
 
 ## License

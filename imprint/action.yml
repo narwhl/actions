@@ -1,73 +1,80 @@
 name: Imprint
-description: Authenticate Github Actions Runner via OIDC ID Token
+description: Exchange the GitHub Actions OIDC ID token for a workload identity federation token (RFC 8693)
 inputs:
+  endpoint:
+    description: "Issuer URL of the identity provider performing the token exchange"
+    required: false
+    default: "https://login.kris.engineer"
+  id_token_audience:
+    description: "Audience of the GitHub OIDC ID token, must match the workload identity's audience. Defaults to `endpoint`"
+    required: false
+    default: ''
   scope:
-    required: true
+    description: "Space-separated scopes to request, must be a subset of the workload identity's scopes. Defaults to all granted scopes"
+    required: false
+    default: ''
+  audience:
+    description: "Audience of the issued access token. Defaults to the workload identity's audience, else the issuer"
+    required: false
+    default: ''
+outputs:
+  access_token:
+    description: "The issued access token"
+    value: ${{ steps.exchange.outputs.access_token }}
+  expires_in:
+    description: "Lifetime of the issued access token in seconds"
+    value: ${{ steps.exchange.outputs.expires_in }}
+  scope:
+    description: "Scopes granted on the issued access token"
+    value: ${{ steps.exchange.outputs.scope }}
 
 runs:
   using: composite
   steps:
-    - uses: actions/github-script@v8
+    - id: exchange
+      uses: actions/github-script@v8
+      env:
+        IMPRINT_ENDPOINT: ${{ inputs.endpoint }}
+        IMPRINT_ID_TOKEN_AUDIENCE: ${{ inputs.id_token_audience }}
+        IMPRINT_SCOPE: ${{ inputs.scope }}
+        IMPRINT_AUDIENCE: ${{ inputs.audience }}
       with:
-        result-encoding: string
         script: |
-          const fs = require('fs')
-          const stsTokenEndpoint = 'sts.narwhl.workers.dev';
-          const token = await core.getIDToken(stsTokenEndpoint);
-          const { jti } = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-          const payload = {
-            audience: `//${stsTokenEndpoint}/providers/github`,
-            grantType: "urn:ietf:params:oauth:grant-type:token-exchange",
-            requestedTokenType: "urn:ietf:params:oauth:token-type:access_token",
-            scope: "${{ inputs.scope }}",
-            subjectTokenType: "urn:ietf:params:oauth:token-type:jwt",
-            subjectToken: token
-          };
-          let response = await fetch(`https://${stsTokenEndpoint}/v1/token`, {
-            method: "POST",
+          const endpoint = process.env.IMPRINT_ENDPOINT.replace(/\/+$/, '');
+          const idToken = await core.getIDToken(process.env.IMPRINT_ID_TOKEN_AUDIENCE || endpoint);
+          const body = new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+            subject_token: idToken,
+            subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+            requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+          });
+          if (process.env.IMPRINT_SCOPE) body.set('scope', process.env.IMPRINT_SCOPE);
+          if (process.env.IMPRINT_AUDIENCE) body.set('audience', process.env.IMPRINT_AUDIENCE);
+
+          const response = await fetch(`${endpoint}/oauth/token`, {
+            method: 'POST',
             headers: {
               'Accept': 'application/json',
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: JSON.stringify(payload)
+            body
           });
-          if(response.status !== 200) {
-            const message = await response.text();
-            core.setFailed(`${new Date().toISOString()} \x1b[1m\x1b[31m❌ Unable to obtain access token from sts, error:\x1b[0m \x1b[1m${response.status} ${message}\x1b[0m`);
-          } else {
-            core.info(`${new Date().toISOString()} \x1b[1m\x1b[32m✅ OIDC claims validated for workload:\x1b[0m ${jti}`);
-            const { access_token } = await response.json();
-            core.setSecret(access_token);
-            core.exportVariable('FEDERATED_TOKEN', access_token);
-            response = await fetch(`https://${stsTokenEndpoint}/v1/notarize/${jti}/resources`, {
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${access_token}`
-              }
-            });
-            if(response.status !== 200) {
-              const message = await response.text();
-              core.setFailed(`${new Date().toISOString()} \x1b[1m\x1b[31m❌ Unable to exchange resource credentials with access token for the requested workload, error:\x1b[0m \x1b[1m${response.status} ${message}\x1b[0m`);
-            } else {
-              core.info(`${new Date().toISOString()} \x1b[1m\x1b[32m✅ Authenticated with issued access token\x1b[0m`);
-              const resources = await response.json();
-              Object.entries(resources).forEach(([key, value]) => {
-                if (key.includes('CERT')) {
-                  fs.writeFileSync(`./${context.repo.owner}_${key.toLowerCase()}.pem`, value);
-                } else {
-                  core.setSecret(value);
-                  core.exportVariable(key, value);
-                  core.info(`${new Date().toISOString()} ➡️ Populated environment variable: \x1b[1m${key}\x1b[0m`);
-                }
-              })
-              core.info(`${new Date().toISOString()} \x1b[1m\x1b[32m✅ Credentials for requested scope are contextualized via environment variables\x1b[0m`);
-              return Object.keys(resources).some(key => key.includes('CERT'));
-            }
+          const text = await response.text();
+          let result;
+          try {
+            result = JSON.parse(text);
+          } catch {
+            result = {};
           }
-    - name: Update certificate trust store
-      if: ${{ steps.script.outputs.result == 'true' }}
-      shell: bash
-      run: |
-        sudo cp *.pem /usr/local/share/ca-certificates/
-        sudo update-ca-certificates
+          if (!response.ok || !result.access_token) {
+            const reason = result.error ? `${result.error}: ${result.error_description ?? ''}` : text;
+            core.setFailed(`${new Date().toISOString()} \x1b[1m\x1b[31m❌ Unable to obtain access token from ${endpoint}, error:\x1b[0m \x1b[1m${response.status} ${reason}\x1b[0m`);
+            return;
+          }
+
+          core.setSecret(result.access_token);
+          core.exportVariable('FEDERATED_TOKEN', result.access_token);
+          core.setOutput('access_token', result.access_token);
+          core.setOutput('expires_in', result.expires_in);
+          core.setOutput('scope', result.scope ?? '');
+          core.info(`${new Date().toISOString()} \x1b[1m\x1b[32m✅ Workload identity token issued\x1b[0m (scope: ${result.scope || 'none'}, expires in ${result.expires_in}s)`);
