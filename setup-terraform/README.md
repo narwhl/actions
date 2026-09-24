@@ -22,6 +22,6 @@ steps:
 
 - `state` path to store the terraform state, must be unique per workflow
 
-- `use_federated_token` uses token issued by [sts](https://github.com/narwhl/actions/blob/main/imprint/README.md), it has the validity of 1 hr instead of 5mins from github
+- `use_federated_token` uses the workload identity token issued by [imprint](../imprint) (`FEDERATED_TOKEN`), valid for 15 minutes; the state backend must trust the identity provider's issuer
 
 - `endpoint` preconfigured
