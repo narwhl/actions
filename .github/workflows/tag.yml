@@ -2,6 +2,7 @@ name: Update Git Tag
 
 on:
   push:
+    branches: [main]
 
 permissions:
   contents: write
