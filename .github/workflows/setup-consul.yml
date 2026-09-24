@@ -1,0 +1,98 @@
+name: Smoke Test setup-consul
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'setup-consul/**'
+      - '.github/workflows/setup-consul.yml'
+  pull_request:
+    paths:
+      - 'setup-consul/**'
+      - '.github/workflows/setup-consul.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: ${{ matrix.os }} / ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        version: ['latest', '1.18.2', '<1.19.0']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Consul
+        uses: ./setup-consul
+        with:
+          consul_version: ${{ matrix.version }}
+
+      - name: Resolve expected version
+        id: expected
+        env:
+          VERSION: ${{ matrix.version }}
+        run: |
+          case "$VERSION" in
+            latest)
+              # Newest open-source, non-prerelease version from the releases index.
+              expected=$(curl -fsSL https://releases.hashicorp.com/consul/index.json \
+                | jq -r '.versions | keys[] | select(test("[-+]") | not)' \
+                | sort -V | tail -n 1)
+              ;;
+            '<1.19.0')
+              expected='1.18.'
+              ;;
+            *)
+              expected="$VERSION"
+              ;;
+          esac
+          echo "Expecting Consul v${expected}"
+          echo "version=${expected}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify Consul CLI
+        env:
+          EXPECTED: ${{ steps.expected.outputs.version }}
+        run: |
+          consul version
+          actual=$(consul version | head -n 1)
+          case "$actual" in
+            "Consul v${EXPECTED}"*) ;;
+            *)
+              echo "::error::Expected Consul v${EXPECTED}*, got: ${actual}"
+              exit 1
+              ;;
+          esac
+          # Only the open-source build should be installed.
+          if [[ "$actual" == *+ent* ]]; then
+            echo "::error::Enterprise build installed: ${actual}"
+            exit 1
+          fi
+
+  unsatisfiable:
+    name: unsatisfiable version fails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Consul
+        id: setup
+        continue-on-error: true
+        uses: ./setup-consul
+        with:
+          consul_version: '<0.1.0'
+
+      - name: Assert action failed
+        if: steps.setup.outcome != 'failure'
+        run: |
+          echo "::error::setup-consul should fail for an unsatisfiable version, got outcome '${{ steps.setup.outcome }}'"
+          exit 1
