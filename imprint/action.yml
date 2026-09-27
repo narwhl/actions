@@ -73,7 +73,6 @@ runs:
           }
 
           core.setSecret(result.access_token);
-          core.exportVariable('FEDERATED_TOKEN', result.access_token);
           core.setOutput('access_token', result.access_token);
           core.setOutput('expires_in', result.expires_in);
           core.setOutput('scope', result.scope ?? '');
