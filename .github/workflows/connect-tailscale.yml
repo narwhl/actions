@@ -1,0 +1,117 @@
+name: Smoke Test connect-tailscale
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'connect-tailscale/**'
+      - '.github/workflows/connect-tailscale.yml'
+  pull_request:
+    paths:
+      - 'connect-tailscale/**'
+      - '.github/workflows/connect-tailscale.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: connect-tailscale
+
+jobs:
+  lint:
+    name: Lint and dist freshness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: connect-tailscale/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npx prettier --check --loglevel silent "src/**/*.ts"
+
+      - name: Check committed dist is current
+        run: |
+          npm run build
+          test -z "$(git status --porcelain -- dist)" || (
+            echo "::error::dist/ is out of date, run 'npm run build' in connect-tailscale and commit" && exit 1
+          )
+
+  no-auth:
+    name: no auth fails gracefully (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: connect-tailscale/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build action
+        run: npm run build
+
+      # Fails at input validation before installing anything; must not crash.
+      - name: Run action without authentication
+        id: smoke
+        uses: ./connect-tailscale
+        with:
+          version: 'latest'
+        continue-on-error: true
+
+      - name: Assert action failed
+        if: steps.smoke.outcome != 'failure'
+        run: |
+          echo "::error::connect-tailscale should fail without authentication, got outcome '${{ steps.smoke.outcome }}'"
+          exit 1
+
+  id-token-validation:
+    name: ${{ matrix.case }}
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - id-token without oauth-client-id
+          - id-token with version below 1.90.0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Run case (${{ matrix.case }})
+        id: run
+        uses: ./connect-tailscale
+        with:
+          version: 'latest'
+          id-token: dummy-token
+          tags: 'tag:ci'
+          oauth-client-id: ${{ matrix.case == 'id-token without oauth-client-id' && '' || 'k12345' }}
+          use-cache: 'false'
+        continue-on-error: true
+
+      - name: Assert action failed
+        if: steps.run.outcome != 'failure'
+        run: |
+          echo "::error::expected '${{ matrix.case }}' to fail validation, got outcome '${{ steps.run.outcome }}'"
+          exit 1

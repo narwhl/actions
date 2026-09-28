@@ -1,0 +1,80 @@
+# Copyright (c) Lee Briggs, Tailscale Inc, & Contributors
+# SPDX-License-Identifier: BSD-3-Clause
+# Forked from https://github.com/tailscale/github-action with one change:
+# an externally minted federated ID token can be supplied via `id-token`.
+
+name: 'Connect Tailscale'
+description: 'Connect your GitHub Action workflow to Tailscale'
+branding:
+  icon: 'arrow-right-circle'
+  color: 'gray-dark'
+
+inputs:
+  authkey:
+    description: 'Your Tailscale authentication key, from the admin panel.'
+    required: false
+    deprecationMessage: 'An OAuth API client https://tailscale.com/s/oauth-clients is recommended instead of an authkey'
+  oauth-client-id:
+    description: 'Your Tailscale OAuth or OIDC Federated Identity clientID.'
+    required: false
+  audience:
+    description: 'Audience used when requesting an OIDC ID token from the runner (GitHub Actions). Ignored when id-token is provided.'
+    required: false
+  id-token:
+    description: 'A federated OIDC ID token minted by an external identity provider, used instead of requesting one from the runner. When provided, the audience input is not needed; Tailscale validates the token''s audience server-side.'
+    required: false
+  oauth-secret:
+    description: 'Your Tailscale OAuth Client Secret.'
+    required: false
+  tags:
+    description: 'Comma separated list of Tags to be applied to nodes. When using an OAuth client, the OAuth client must have the `auth_keys` scope and alls tags on the OAuth client must match all tags specified here.'
+    required: false
+  version:
+    description: 'Tailscale version to use. Specify `latest` to use the latest stable version, and `unstable` to use the latest development version.'
+    required: true
+    default: '1.102.4'
+  args:
+    description: 'Optional additional arguments to `tailscale up`.'
+    required: false
+    default: ''
+  tailscaled-args:
+    description: 'Optional additional arguments to `tailscaled`.'
+    required: false
+    default: ''
+  hostname:
+    description: 'Fixed hostname to use. Must be a valid DNS label (alphanumeric and dashes only, 1-63 characters, cannot start or end with a dash). If not provided, a hostname will be generated based on the runner name.'
+    required: false
+    default: ''
+  timeout:
+    description: 'Timeout for `tailscale up`.'
+    required: false
+    default: '2m'
+  retry:
+    description: 'Number of retries for `tailscale up`.'
+    required: false
+    default: '5'
+  use-cache:
+    description: 'Enable caching of Tailscale binaries to speed up subsequent runs.'
+    required: false
+    default: 'true'
+  statedir:
+    description: 'Directory to store Tailscale state. If empty, uses in-memory storage.'
+    required: false
+    default: ''
+  sha256sum:
+    description: 'Expected SHA256 checksum of the tarball.'
+    required: false
+    default: ''
+  ping:
+    description: 'Comma separated list of hosts (Tailscale IP addresses or machine names if MagicDNS is enabled on the tailnet) to `tailscale ping` for connectivity verification after `tailscale up` completes.'
+    required: false
+    default: ''
+  log-mode:
+    description: 'Controls action log output mode. Use `grouped` to fold major setup and cleanup phases, `normal` for ungrouped logs, or `quiet` to suppress routine informational output.'
+    required: false
+    default: 'grouped'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'
+  post: 'dist/logout/index.js'
