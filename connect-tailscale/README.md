@@ -6,11 +6,12 @@ Forked from [`tailscale/github-action`](https://github.com/tailscale/github-acti
 
 ## What's different
 
-Upstream's workload-identity path always requests the OIDC token from the runner itself via `core.getIDToken()`, which only works for GitHub's job-scoped token (~5 minute lifetime). This fork adds an **`id-token`** input: when set, the token is passed through to `tailscale up --id-token` directly and no runner OIDC request is made. This lets you authenticate with a token minted by any identity provider your tailnet trusts — for example one exchanged by [`imprint`](../imprint), which is valid for 1 hour instead of GitHub's ~5 minutes:
+Upstream's workload-identity path always requests the OIDC token from the runner itself via `core.getIDToken()`, which only works for GitHub's job-scoped token (~5 minute lifetime). This fork adds an **`id-token`** input: when set, the token is passed through to `tailscale up --id-token` directly and no runner OIDC request is made. This lets you authenticate with a token minted by any identity provider your tailnet trusts — for example one exchanged by [`imprint`](../imprint) via its `access_token` output:
 
 ```yml
 steps:
   - uses: narwhl/actions/imprint@latest
+    id: imprint
     with:
       scope: tailscale
 
@@ -18,7 +19,7 @@ steps:
     with:
       oauth-client-id: ${{ vars.TAILSCALE_CLIENT_ID }}
       tags: tag:ci
-      id-token: ${{ env.FEDERATED_TOKEN }}
+      id-token: ${{ steps.imprint.outputs.access_token }}
 ```
 
 When `id-token` is omitted, behavior is identical to upstream: provide `audience` + `oauth-client-id` + `tags` (token requested from the runner), `oauth-secret` + `tags`, or a classic `authkey`. The `audience` input is not required with `id-token` — Tailscale validates the token's `aud` claim server-side against the OIDC identity configuration. The default installed version is refreshed periodically and may differ from upstream's.

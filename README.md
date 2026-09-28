@@ -77,11 +77,12 @@ steps:
 
 ### [connect-tailscale](connect-tailscale)
 
-Connects the runner to a Tailscale tailnet, forked from [`tailscale/github-action`](https://github.com/tailscale/github-action) (BSD-3-Clause). Adds an `id-token` input so the node can authenticate with a federated OIDC token minted by any provider the tailnet trusts — for example one from [`imprint`](imprint), valid 1 hour instead of GitHub's ~5-minute job token — instead of being constrained to the runner-issued one:
+Connects the runner to a Tailscale tailnet, forked from [`tailscale/github-action`](https://github.com/tailscale/github-action) (BSD-3-Clause). Adds an `id-token` input so the node can authenticate with a federated OIDC token minted by any provider the tailnet trusts — for example one exchanged by [`imprint`](imprint) — instead of being constrained to the runner-issued one:
 
 ```yml
 steps:
 - uses: narwhl/actions/imprint@latest
+  id: imprint
   with:
     scope: tailscale
 
@@ -89,7 +90,7 @@ steps:
   with:
     oauth-client-id: ${{ vars.TAILSCALE_CLIENT_ID }}
     tags: tag:ci
-    id-token: ${{ env.FEDERATED_TOKEN }}
+    id-token: ${{ steps.imprint.outputs.access_token }}
 ```
 
 Without `id-token`, behavior is identical to upstream: runner-requested workload identity (`audience` + `oauth-client-id`), OAuth client (`oauth-secret`), or a classic auth key.
