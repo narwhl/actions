@@ -91,22 +91,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        case:
-          - id-token without oauth-client-id
-          - id-token with version below 1.90.0
+        include:
+          - case: id-token without oauth-client-id
+            oauth-client-id: ''
+            version: 'latest'
+          - case: id-token with version below 1.90.0
+            oauth-client-id: 'k12345'
+            version: '1.80.0'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      # Both cases fail at input validation, before tailscale is installed.
       - name: Run case (${{ matrix.case }})
         id: run
         uses: ./connect-tailscale
         with:
-          version: 'latest'
+          version: ${{ matrix.version }}
           id-token: dummy-token
           tags: 'tag:ci'
-          oauth-client-id: ${{ matrix.case == 'id-token without oauth-client-id' && '' || 'k12345' }}
+          oauth-client-id: ${{ matrix.oauth-client-id }}
           use-cache: 'false'
         continue-on-error: true
 
