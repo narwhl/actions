@@ -5,11 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      branch:
-        description: Branch whose head commit should be tagged
-        required: true
-        default: main
-        type: string
       tag:
         description: Tag name to create/move
         required: true
@@ -26,30 +21,19 @@ jobs:
       - name: Update tag
         uses: actions/github-script@v8
         env:
-          TARGET_BRANCH: ${{ inputs.branch }}
           TARGET_TAG: ${{ inputs.tag }}
         with:
           script: |
-            const { GITHUB_REPOSITORY, GITHUB_SHA, TARGET_BRANCH, TARGET_TAG } = process.env;
+            const { GITHUB_REPOSITORY, GITHUB_SHA, TARGET_TAG } = process.env;
             const [owner, repo] = GITHUB_REPOSITORY.split('/');
             const tag = TARGET_TAG || "latest";
-
-            let sha = GITHUB_SHA;
-            if (TARGET_BRANCH) {
-              const { data: { commit } } = await github.rest.repos.getBranch({
-                owner,
-                repo,
-                branch: TARGET_BRANCH,
-              });
-              sha = commit.sha;
-            }
 
             try {
               await github.rest.git.updateRef({
                 owner,
                 repo,
                 ref: `tags/${tag}`,
-                sha,
+                sha: GITHUB_SHA,
                 force: true,
               });
             } catch (error) {
@@ -58,6 +42,6 @@ jobs:
                 owner,
                 repo,
                 ref: `refs/tags/${tag}`,
-                sha,
+                sha: GITHUB_SHA,
               });
             }
