@@ -249,7 +249,7 @@ function maskSecret (core, value) {
 async function run (core) {
   const url = core.getInput('url', { required: true });
   const namespace = core.getInput('namespace', { required: false });
-  const requests = parseSecretsInput(core.getInput('secrets', { required: false }));
+  const requests = parseSecretsInput(core.getInput('kv', { required: false }));
   const exportEnvironment = getBooleanInput(core, 'exportEnv', true);
   const exportToken = getBooleanInput(core, 'exportToken', false);
   const ignoreNotFound = getBooleanInput(core, 'ignoreNotFound', false);

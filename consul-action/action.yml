@@ -21,7 +21,7 @@ inputs:
   jwt:
     description: 'A caller-supplied JWT to exchange with Consul when method is jwt.'
     required: false
-  secrets:
+  kv:
     description: 'A semicolon-separated list of Consul KV keys to retrieve. Map a key with "key | OUTPUT_NAME".'
     required: false
   exportEnv:

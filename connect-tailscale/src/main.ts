@@ -247,7 +247,7 @@ async function getInputs(): Promise<TailscaleConfig> {
 
   const authKey = core.getInput("authkey") || "";
   const oauthSecret = core.getInput("oauth-secret") || "";
-  const idToken = core.getInput("id-token") || "";
+  const idToken = core.getInput("federated-token") || "";
 
   // Mask sensitive values in logs unless debug mode is enabled
   if (!core.isDebug()) {
@@ -263,7 +263,7 @@ async function getInputs(): Promise<TailscaleConfig> {
   }
 
   const config = {
-    version: core.getInput("version") || "1.102.4",
+    version: parseVersion(core.getInput("version") || "1.104.5"),
     resolvedVersion: "",
     arch: "",
     authKey: authKey,
@@ -291,6 +291,19 @@ async function getInputs(): Promise<TailscaleConfig> {
   }
 
   return config;
+}
+
+function parseVersion(input: string): string {
+  if (input === versionLatest || input === versionUnstable) {
+    return input;
+  }
+  const version = input.replace(/^v/, "");
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    throw new Error(
+      `Invalid version "${input}": use a version number such as 1.104.2, "latest", or "unstable".`,
+    );
+  }
+  return version;
 }
 
 function validateAuth(config: TailscaleConfig): void {

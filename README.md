@@ -19,7 +19,7 @@ steps:
 
 ### [consul-action](consul-action)
 
-Authenticates to Consul with an existing ACL token or a caller-supplied JWT, then reads Consul KV values into masked action outputs and environment variables. The `secrets` input follows the Vault Action mapping style, adapted to Consul's single value per KV key:
+Authenticates to Consul with an existing ACL token or a caller-supplied JWT, then reads Consul KV values into masked action outputs and environment variables. The `kv` input follows the Vault Action mapping style, adapted to Consul's single value per KV key:
 
 ```text
 {{ KV key }} | {{ Env/output variable name }}
@@ -37,7 +37,7 @@ steps:
     method: jwt
     authMethod: github-actions
     jwt: ${{ steps.github-oidc.outputs.token }}
-    secrets: |
+    kv: |
       apps/api/database-password | DB_PASSWORD ;
       apps/api/npm-token | NPM_TOKEN
 ```
@@ -51,36 +51,26 @@ The action does not mint GitHub OIDC tokens. A GitHub-issued token can be suppli
 
 Set the optional `namespace` input for Consul Enterprise. The action sends it as `X-Consul-Namespace` during ACL login, KV retrieval, and token cleanup. When `exportToken` is enabled, the same value is also exported as `CONSUL_NAMESPACE`.
 
-### [setup-terraform](setup-terraform)
-
-Wraps [`hashicorp/setup-terraform`](https://github.com/hashicorp/setup-terraform) and authenticates automatically against a custom HTTP state backend (defaults to `terraform.narwhl.workers.dev`, overridable via `endpoint`), so no `cli_config_credentials_token` is required. Pass `use_federated_token: true` to authenticate with a token issued by [`imprint`](imprint), valid 1 hour instead of GitHub's ~5 minutes.
-
-```yml
-steps:
-- uses: narwhl/actions/setup-terraform@latest
-  with:
-    state: my-state
-    terraform_version: "1.13.0"
-```
-
 ### [imprint](imprint)
 
-Authenticates the runner to a Security Token Service via its OIDC ID token and exchanges it for short-lived resource credentials, exposed as environment variables for subsequent steps.
+Exchanges the runner's GitHub OIDC ID token for a workload identity federation token (RFC 8693) issued by `login.kris.engineer`. The token is returned as the `access_token` output; pass it to `consul-action` (`method: jwt`) to read KV values, or to `connect-tailscale` via `federated-token`.
 
 ```yml
 steps:
 - uses: narwhl/actions/imprint@latest
+  id: imprint
   with:
-    scope: tailscale cloudflare
+    scope: terraform
 ```
 
 ### [connect-tailscale](connect-tailscale)
 
-Connects the runner to a Tailscale tailnet, forked from [`tailscale/github-action`](https://github.com/tailscale/github-action) (BSD-3-Clause). Adds an `id-token` input so the node can authenticate with a federated OIDC token minted by any provider the tailnet trusts — for example one from [`imprint`](imprint), valid 1 hour instead of GitHub's ~5-minute job token — instead of being constrained to the runner-issued one:
+Connects the runner to a Tailscale tailnet, forked from [`tailscale/github-action`](https://github.com/tailscale/github-action) (BSD-3-Clause). Adds a `federated-token` input so the node can authenticate with a federated OIDC token minted by any provider the tailnet trusts — for example one exchanged by [`imprint`](imprint) — instead of being constrained to the runner-issued one:
 
 ```yml
 steps:
 - uses: narwhl/actions/imprint@latest
+  id: imprint
   with:
     scope: tailscale
 
@@ -88,10 +78,10 @@ steps:
   with:
     oauth-client-id: ${{ vars.TAILSCALE_CLIENT_ID }}
     tags: tag:ci
-    id-token: ${{ env.FEDERATED_TOKEN }}
+    federated-token: ${{ steps.imprint.outputs.access_token }}
 ```
 
-Without `id-token`, behavior is identical to upstream: runner-requested workload identity (`audience` + `oauth-client-id`), OAuth client (`oauth-secret`), or a classic auth key.
+Without `federated-token`, behavior is identical to upstream: runner-requested workload identity (`audience` + `oauth-client-id`), OAuth client (`oauth-secret`), or a classic auth key.
 
 ## License
 
