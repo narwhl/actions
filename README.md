@@ -53,7 +53,7 @@ Set the optional `namespace` input for Consul Enterprise. The action sends it as
 
 ### [imprint](imprint)
 
-Exchanges the runner's GitHub OIDC ID token for a workload identity federation token (RFC 8693) issued by `login.kris.engineer`. The token is returned as the `access_token` output; pass it to `consul-action` (`method: jwt`) to read KV values, or to `connect-tailscale` via `id-token`.
+Exchanges the runner's GitHub OIDC ID token for a workload identity federation token (RFC 8693) issued by `login.kris.engineer`. The token is returned as the `access_token` output; pass it to `consul-action` (`method: jwt`) to read KV values, or to `connect-tailscale` via `federated-token`.
 
 ```yml
 steps:
@@ -65,7 +65,7 @@ steps:
 
 ### [connect-tailscale](connect-tailscale)
 
-Connects the runner to a Tailscale tailnet, forked from [`tailscale/github-action`](https://github.com/tailscale/github-action) (BSD-3-Clause). Adds an `id-token` input so the node can authenticate with a federated OIDC token minted by any provider the tailnet trusts — for example one exchanged by [`imprint`](imprint) — instead of being constrained to the runner-issued one:
+Connects the runner to a Tailscale tailnet, forked from [`tailscale/github-action`](https://github.com/tailscale/github-action) (BSD-3-Clause). Adds a `federated-token` input so the node can authenticate with a federated OIDC token minted by any provider the tailnet trusts — for example one exchanged by [`imprint`](imprint) — instead of being constrained to the runner-issued one:
 
 ```yml
 steps:
@@ -78,10 +78,10 @@ steps:
   with:
     oauth-client-id: ${{ vars.TAILSCALE_CLIENT_ID }}
     tags: tag:ci
-    id-token: ${{ steps.imprint.outputs.access_token }}
+    federated-token: ${{ steps.imprint.outputs.access_token }}
 ```
 
-Without `id-token`, behavior is identical to upstream: runner-requested workload identity (`audience` + `oauth-client-id`), OAuth client (`oauth-secret`), or a classic auth key.
+Without `federated-token`, behavior is identical to upstream: runner-requested workload identity (`audience` + `oauth-client-id`), OAuth client (`oauth-secret`), or a classic auth key.
 
 ## License
 

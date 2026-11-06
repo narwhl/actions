@@ -247,7 +247,7 @@ async function getInputs(): Promise<TailscaleConfig> {
 
   const authKey = core.getInput("authkey") || "";
   const oauthSecret = core.getInput("oauth-secret") || "";
-  const idToken = core.getInput("id-token") || "";
+  const idToken = core.getInput("federated-token") || "";
 
   // Mask sensitive values in logs unless debug mode is enabled
   if (!core.isDebug()) {

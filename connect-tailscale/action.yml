@@ -1,7 +1,7 @@
 # Copyright (c) Lee Briggs, Tailscale Inc, & Contributors
 # SPDX-License-Identifier: BSD-3-Clause
 # Forked from https://github.com/tailscale/github-action with one change:
-# an externally minted federated ID token can be supplied via `id-token`.
+# an externally minted federated ID token can be supplied via `federated-token`.
 
 name: 'Connect Tailscale'
 description: 'Connect your GitHub Action workflow to Tailscale'
@@ -18,9 +18,9 @@ inputs:
     description: 'Your Tailscale OAuth or OIDC Federated Identity clientID.'
     required: false
   audience:
-    description: 'Audience used when requesting an OIDC ID token from the runner (GitHub Actions). Ignored when id-token is provided.'
+    description: 'Audience used when requesting an OIDC ID token from the runner (GitHub Actions). Ignored when federated-token is provided.'
     required: false
-  id-token:
+  federated-token:
     description: 'A federated OIDC ID token minted by an external identity provider, used instead of requesting one from the runner. When provided, the audience input is not needed; Tailscale validates the token''s audience server-side.'
     required: false
   oauth-secret:
