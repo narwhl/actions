@@ -34,7 +34,7 @@ When `id-token` is omitted, behavior is identical to upstream: provide `audience
 | `oauth-secret` | Tailscale OAuth client secret. | |
 | `tags` | Comma-separated tags applied to the node (required for OAuth/federated auth). | |
 | `authkey` | Classic Tailscale auth key (deprecated upstream). | |
-| `version` | Tailscale version, `latest`, or `unstable`. | `1.102.4` |
+| `version` | Tailscale version, `latest`, or `unstable` (a leading `v` is accepted). | `1.104.5` |
 | `args` / `tailscaled-args` | Extra args for `tailscale up` / `tailscaled`. | |
 | `hostname` | Fixed hostname; generated from the runner name when empty. | |
 | `timeout` / `retry` | `tailscale up` timeout and retry count. | `2m` / `5` |
