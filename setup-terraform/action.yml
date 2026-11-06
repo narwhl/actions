@@ -31,7 +31,7 @@ runs:
   using: "composite"
   steps:
     - name: Configure Terraform backend and credentials
-      uses: actions/github-script@v8
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
       with:
         script: |
           const token = '${{ inputs.use_federated_token }}'.length > 0 ? process.env.FEDERATED_TOKEN:await core.getIDToken();
@@ -47,7 +47,7 @@ runs:
             core.exportVariable(key, value);
           }
           core.info(`${new Date().toISOString()} \x1b[1m\x1b[32m✅ Terraform backend credentials configured\x1b[0m`)
-    - uses: hashicorp/setup-terraform@v4
+    - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
       with:
         terraform_version: ${{ inputs.terraform_version }}
         terraform_wrapper: ${{ inputs.terraform_wrapper }}
@@ -58,7 +58,7 @@ runs:
         echo "TF_PLUGIN_CACHE_DIR=$HOME/.terraform.d/plugin-cache" >>"$GITHUB_ENV"
         mkdir --parents "$HOME/.terraform.d/plugin-cache"
     - name: Cache Terraform
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       if: inputs.enable_caching == 'true'
       with:
         path: |

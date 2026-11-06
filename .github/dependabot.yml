@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    # "/" covers .github/workflows and a root action.yml; composite
+    # action.yml files in subdirectories each need their own entry
+    # (https://github.com/dependabot/dependabot-core/issues/7495).
+    directories:
+      - /
+      - /imprint
+      - /setup-terraform
+    schedule:
+      interval: weekly
