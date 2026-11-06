@@ -90,7 +90,7 @@ test('token authentication retrieves mapped and default KV values', async () => 
       url: `${url}/consul`,
       namespace: 'payments',
       token: 'static-token',
-      secrets: 'apps/api/password | DB_PASSWORD; apps/api/npm-token; missing | OPTIONAL',
+      kv: 'apps/api/password | DB_PASSWORD; apps/api/npm-token; missing | OPTIONAL',
       exportEnv: 'true',
       exportToken: 'true',
       ignoreNotFound: 'true'

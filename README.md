@@ -19,7 +19,7 @@ steps:
 
 ### [consul-action](consul-action)
 
-Authenticates to Consul with an existing ACL token or a caller-supplied JWT, then reads Consul KV values into masked action outputs and environment variables. The `secrets` input follows the Vault Action mapping style, adapted to Consul's single value per KV key:
+Authenticates to Consul with an existing ACL token or a caller-supplied JWT, then reads Consul KV values into masked action outputs and environment variables. The `kv` input follows the Vault Action mapping style, adapted to Consul's single value per KV key:
 
 ```text
 {{ KV key }} | {{ Env/output variable name }}
@@ -37,7 +37,7 @@ steps:
     method: jwt
     authMethod: github-actions
     jwt: ${{ steps.github-oidc.outputs.token }}
-    secrets: |
+    kv: |
       apps/api/database-password | DB_PASSWORD ;
       apps/api/npm-token | NPM_TOKEN
 ```
