@@ -7,6 +7,5 @@ updates:
     directories:
       - /
       - /imprint
-      - /setup-terraform
     schedule:
       interval: weekly

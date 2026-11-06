@@ -25,7 +25,7 @@ steps:
 
 ### Action Outputs
 
-- `access_token` the issued access token, masked in logs. Also exported as the `FEDERATED_TOKEN` environment variable for [`setup-terraform`](../setup-terraform)
+- `access_token` the issued access token, masked in logs
 - `expires_in` lifetime of the token in seconds (15 minutes)
 - `scope` scopes granted on the token
 
@@ -38,6 +38,6 @@ Imprint does not retrieve secrets. To read configuration or credentials, pass th
     method: jwt
     authMethod: passage
     jwt: ${{ steps.imprint.outputs.access_token }}
-    secrets: |
+    kv: |
       dynamic/cloudflare/api-token/ci | CLOUDFLARE_API_TOKEN
 ```

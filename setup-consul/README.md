@@ -1,6 +1,6 @@
 # setup-consul
 
-This GitHub Action installs the [Consul](https://developer.hashicorp.com/consul) CLI in your GitHub Actions workflow by resolving the requested version from [releases.hashicorp.com](https://releases.hashicorp.com/consul) and adding the binary to `PATH`. It follows the same structure as [`setup-terraform`](../setup-terraform) but leaves out Terraform-specific concerns (the command wrapper, CLI credentials file, and the darwin/arm64 fallback).
+This GitHub Action installs the [Consul](https://developer.hashicorp.com/consul) CLI in your GitHub Actions workflow by resolving the requested version from [releases.hashicorp.com](https://releases.hashicorp.com/consul) and adding the binary to `PATH`. It follows the same structure as the now-retired `setup-terraform` action, but leaves out Terraform-specific concerns (the command wrapper, CLI credentials file, and the darwin/arm64 fallback).
 
 ### Usage
 ```yml

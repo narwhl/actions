@@ -51,21 +51,9 @@ The action does not mint GitHub OIDC tokens. A GitHub-issued token can be suppli
 
 Set the optional `namespace` input for Consul Enterprise. The action sends it as `X-Consul-Namespace` during ACL login, KV retrieval, and token cleanup. When `exportToken` is enabled, the same value is also exported as `CONSUL_NAMESPACE`.
 
-### [setup-terraform](setup-terraform)
-
-Wraps [`hashicorp/setup-terraform`](https://github.com/hashicorp/setup-terraform) and authenticates automatically against a custom HTTP state backend (defaults to `terraform.narwhl.workers.dev`, overridable via `endpoint`), so no `cli_config_credentials_token` is required. Pass `use_federated_token: true` to authenticate with a token issued by [`imprint`](imprint), valid 15 minutes.
-
-```yml
-steps:
-- uses: narwhl/actions/setup-terraform@latest
-  with:
-    state: my-state
-    terraform_version: "1.13.0"
-```
-
 ### [imprint](imprint)
 
-Exchanges the runner's GitHub OIDC ID token for a workload identity federation token (RFC 8693) issued by `login.kris.engineer`. The token is returned as the `access_token` output and exported as `FEDERATED_TOKEN`; pass it to `consul-action` (`method: jwt`) to read secrets, or to `setup-terraform` via `use_federated_token`.
+Exchanges the runner's GitHub OIDC ID token for a workload identity federation token (RFC 8693) issued by `login.kris.engineer`. The token is returned as the `access_token` output; pass it to `consul-action` (`method: jwt`) to read KV values, or to `connect-tailscale` via `id-token`.
 
 ```yml
 steps:
